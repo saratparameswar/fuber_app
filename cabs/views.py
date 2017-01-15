@@ -4,8 +4,11 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 import datetime
+from math import radians, cos, sin, asin, sqrt
+import gpxpy.geo
 
 from cabs.models import CabDetails,TripTransactions, UserProfile
+from datetime import timedelta
 
 
 
@@ -53,7 +56,28 @@ class  CalculateDistance(object):
         near_by_cars = sorted(cabs_available, key=lambda k: k['distance_para'])
         return  near_by_cars
     
+    @staticmethod 
+    def _calculate_distance(lat1,lon1,lat2,lon2):
+        """use the equirectangular distance approximation. This approximation is faster than using the Haversine formula."""
+        lat1 = radians(lat1)
+        lon1 = radians(lon1)
+        
+        lat2 =radians(lat2)
+        lon2 = radians(lon2)
+        
+        R = 6371  # approximate radius of earth in km
+        
+        x = (lon2 - lon1) * cos( 0.5*(lat2+lat1) )
+        y = lat2 - lat1
+        kms = R * sqrt( x*x + y*y )
+        return kms
     
+    @staticmethod
+    def cab_fee(in_kms, total_mins, color):
+        total_fare = in_kms*2
+        if color == 'Pink':
+            total_fare  +=5
+        return total_fare
 
 
 class AvailableCars(APIView):
@@ -142,7 +166,15 @@ class EndTrip(APIView):
             """Make cab Available for booking"""
             transaction_obj.cab.is_available = True
             transaction_obj.cab.save()
+            
+            in_kms = CalculateDistance._calculate_distance(transaction_obj.start_latitude, transaction_obj.start_longitude, 
+                                                  float(end_latitude), float(end_longitude))
+
+            fare =  CalculateDistance.cab_fee(in_kms, total_mins=3, color=transaction_obj.cab.cab_color)
             context_dict['status'] = 'Trip Finished'
+            context_dict['kms'] = in_kms
+            context_dict['cab_fee'] =  fare
+            
         return Response(context_dict, status=status.HTTP_200_OK)
     
     

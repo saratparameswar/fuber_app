@@ -65,8 +65,5 @@ transaction_id:10 // this mandatory, each trip have a transaction id. currently 
 
 Response:
 
-{
-  "status": "Trip Finished"
-}
-
+{"status":"Trip Finished","cab_fee":13.552903985483155,"kms":4.276451992741578}
 
